@@ -1,2 +1,2 @@
-base_dir = "FSL-2410"
-output_dir = "iFly-2410"
+base_dir = r".\resource"
+output_dir = r".\release"
