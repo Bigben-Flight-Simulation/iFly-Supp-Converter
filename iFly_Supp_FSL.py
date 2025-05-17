@@ -507,6 +507,9 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 def print_debug_message(msg: str) -> None:
     LOG.append(msg)
     print(msg)
+    if "[WARN]" in msg:
+        with open(r"E:\Flight Simulation\Development\导航数据\BigBen Flight Simulation Data\iFly-Supp-Converter\log.txt", "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
 
 
 if __name__ == "__main__":
