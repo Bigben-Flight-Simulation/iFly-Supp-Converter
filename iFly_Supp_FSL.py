@@ -5,7 +5,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import pandas as pd
 
-from directories import base_dir, output_dir
+from directories import *
 
 DF_APT = pd.read_csv(f"{base_dir}/AIRPORT.csv")
 DF_RWY = pd.read_csv(f"{base_dir}/RUNWAY.csv")
@@ -291,6 +291,7 @@ def extract_leg(row: pd.Series) -> list:
     arpt = row['ARPT_IDENT']
     leg_type = row['PATH_AND_TERMINATION']
     proc_name = row['PROC_IDENT']
+    transition_name = row['TRANSITION_IDENT'] if pd.notna(row['TRANSITION_IDENT']) else "PUBLIC"
     extracted_lines = [f"Leg={leg_type}"]
     pt_name = row['FIX_IDENT']
     # find Lat/Lon
@@ -312,10 +313,10 @@ def extract_leg(row: pd.Series) -> list:
                 extracted_lines.append("Longitude=%.06f" % longitude)
             if len(msg):
                 print_debug_message(
-                    f"[WARN] Lat/Lon for {arpt}:{proc_name}:{pt_name}:{msg}")
+                    f"[WARN] Lat/Lon for {arpt}:{proc_name}:{transition_name}:{pt_name}:{msg}")
         else:
             print_debug_message(
-                f"[WARN] IDENT missing for {arpt}:{proc_name}")
+                f"[WARN] IDENT missing for {arpt}:{proc_name}:{transition_name}")
     # cross this point: by finding 'B/Y' in 2nd char of WAYPOINT_DESCR_CODE
     pt_descr = row['WAYPOINT_DESCR_CODE']
     if not pd.isna(pt_descr) and len(pt_descr) == 4 and pt_descr[1] in ['B', 'Y']:
@@ -327,14 +328,14 @@ def extract_leg(row: pd.Series) -> list:
             extracted_lines.append("Heading=%.01f" % float(pt_hdg))
         else:
             print_debug_message(
-                f"[WARN] Heading missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] Heading missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # turn direction
     pt_tdir = row['TURN_DIR']
     if pt_tdir in ['L', 'R']:
         extracted_lines.append(f"TurnDirection={pt_tdir}")
     elif leg_type in ['PI', 'HA', 'HF', 'HM']:
         print_debug_message(
-            f"[WARN] TurnDirection missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] TurnDirection missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # speed
     pt_spd = row['SPEED_LIMIT']
     if not pd.isna(pt_spd) and len(pt_spd := pt_spd.strip()):
@@ -361,7 +362,7 @@ def extract_leg(row: pd.Series) -> list:
             extracted_lines.append("Altitude=%d" % pt_alt1)
     elif leg_type in ['CA', 'VA', 'FA']:
         print_debug_message(
-            f"[WARN] Altitude missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] Altitude missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # missed approach point: by finding 'M' in 4th char of WAYPOINT_DESCR_CODE
     if not pd.isna(pt_descr) and len(pt_descr) == 4 and pt_descr[3] == 'M':
         extracted_lines.append("MAP=1")
@@ -371,7 +372,7 @@ def extract_leg(row: pd.Series) -> list:
         extracted_lines.append(f"Frequency={pt_navaid}")
     elif leg_type in ['PI', 'AF', 'CD', 'VD', 'CR', 'VR', 'FD']:
         print_debug_message(
-            f"[WARN] Frequency missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] Frequency missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # slope
     pt_angl = row['VERTICAL_ANGLE']
     if not pd.isna(pt_angl):
@@ -382,7 +383,7 @@ def extract_leg(row: pd.Series) -> list:
         extracted_lines.append("NavBear=%.01f" % (int(pt_navbear)/10))
     elif leg_type in ['PI', 'CR', 'VR']:
         print_debug_message(
-            f"[WARN] NavBear missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] NavBear missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # NavDist
     if leg_type in ['CD', 'VD', 'FD']:
         pt_dort = row['ROUTE_DISTANCE_HOLDING_DISTANCE_OR_TIME']
@@ -390,14 +391,14 @@ def extract_leg(row: pd.Series) -> list:
             extracted_lines.append("NavDist=%.01f" % (int(pt_dort)/10))
         else:
             print_debug_message(
-                f"[WARN] NavDist missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] NavDist missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     else:
         pt_navrho = row['RHO']
         if not pd.isna(pt_navrho):
             extracted_lines.append("NavDist=%.01f" % (int(pt_navrho)/10))
         elif leg_type in ['PI', 'AF']:
             print_debug_message(
-                f"[WARN] NavDist missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] NavDist missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # dist
     pt_dort = row['ROUTE_DISTANCE_HOLDING_DISTANCE_OR_TIME']
     if not pd.isna(pt_dort) and len(pt_dort := pt_dort.strip()) and pt_dort[0] == 'T':
@@ -406,7 +407,7 @@ def extract_leg(row: pd.Series) -> list:
         extracted_lines.append("Dist=%.01f" % (int(pt_dort)/10))
     elif leg_type in ['PI', 'HA', 'HF', 'HM', 'FC']:
         print_debug_message(
-            f"[WARN] Dist missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] Dist missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # Center lat/lon
     if leg_type == 'RF':
         pt_cfix = row['CENTER_FIX_OR_TAA_PROCEDURE_TURN_IND'].strip()
@@ -421,7 +422,7 @@ def extract_leg(row: pd.Series) -> list:
                     f"[WARN] RF center for {arpt}:{proc_name}:{pt_cfix}:{msg}")
         else:
             print_debug_message(
-                f"[WARN] RF center missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] RF center missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     return extracted_lines
 
 
