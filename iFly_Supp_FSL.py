@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+from tqdm import tqdm
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pandas as pd
@@ -17,39 +18,79 @@ DF_NDB = pd.read_csv(f"{base_dir}/NDB_NAVAID-{filename[3:]}.csv")
 
 LOG = []
 
+def copy_files(file_list, src_dir, dst_dir, desc, exclude_prefixes=None):
+    os.makedirs(dst_dir, exist_ok=True)
+    for src, dst in tqdm(file_list, desc=desc, total=len(file_list), unit="file"):
+        if exclude_prefixes and src.startswith(exclude_prefixes):
+            continue
+        shutil.copy2(os.path.join(src_dir, src), os.path.join(dst_dir, dst))
 
 def main() -> None:
     try:
         # restore directories
         print_debug_message("[INFO] Preparing output directories...")
         shutil.rmtree(output_dir, ignore_errors=True)
-        os.makedirs(output_dir)
-        os.makedirs(os.path.join(output_dir, "Supp"), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "Star"), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "Sid"), exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+
+        for sub in ("Supp", "Star", "Sid"):
+            os.makedirs(os.path.join(output_dir, sub), exist_ok=True)
+
         # convert
         print_debug_message("[INFO] Converting from FSL to iFly...")
         export_airport_supp()
         export_airport_sid()
         export_airport_star()
         export_airport_app()
+
         # pack
         print_debug_message("[INFO] Making package...")
-        shutil.copy("Installation.txt", f"{output_dir}/Installation.txt")
-        with ZipFile(f"{output_dir}-CHN-PROC-FULL.zip", 'w',
-                     compression=ZIP_DEFLATED, compresslevel=9) as zipf:
-            for root, dirs, files in os.walk(output_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, output_dir)
-                    zipf.write(file_path, arcname=arcname)
+        shutil.copy("Installation.txt", os.path.join(output_dir, "Installation.txt"))
+
+        exclude_prefixes = ("ZB","ZG","ZH","ZJ","ZL","ZP","ZS","ZU","ZW","ZY")
+
+        # Define source and destination directories for SID/STAR/SUPP
+        src_sid_dir = os.path.join(base_dir, "navdata", "Permanent", "Sid")
+        dst_sid_dir = os.path.join(output_dir, "Sid")
+        src_star_dir = os.path.join(base_dir, "navdata", "Permanent", "Star")
+        dst_star_dir = os.path.join(output_dir, "Star")
+        src_supp_dir = os.path.join(base_dir, "navdata", "Permanent", "Supp")
+        dst_supp_dir = os.path.join(output_dir, "Supp")
+
+        # SID/STAR/SUPP
+        copy_files([(f, f) for f in os.listdir(src_sid_dir)], src_sid_dir, dst_sid_dir, "[INFO] Copying SID files", exclude_prefixes=exclude_prefixes)
+        copy_files([(f, f) for f in os.listdir(src_star_dir)], src_star_dir, dst_star_dir, "[INFO] Copying STAR files", exclude_prefixes=exclude_prefixes)
+        copy_files([(f, f) for f in os.listdir(src_supp_dir)], src_supp_dir, dst_supp_dir, "[INFO] Copying SUPP files", exclude_prefixes=exclude_prefixes)
+
+        # Navigraph
+        navigraph_files = [("FMC_Ident.txt","FMC_Ident.txt"),("WPNAVGLS.txt","WPNAVGLS.txt")]
+        copy_files(navigraph_files, os.path.join(base_dir,"navdata","Permanent"), output_dir, "[INFO] Copying Navigraph files")
+
+        # NAIP
+        naip_files = [
+            ("airports.dat","AIRPORTS.DAT"),
+            ("wpNavAID.txt","WPNAVAID.TXT"),
+            ("wpNavAPT.txt","WPNAVAPT.TXT"),
+            ("wpNavFIX.txt","WPNAVFIX.TXT"),
+            ("wpNavRTE.txt","WPNAVRTE.TXT"),
+        ]
+        copy_files(naip_files, os.path.join(base_dir,"navdata","WorldWide_Navdata"), output_dir, "[INFO] Copying NAIP files")
+
+        # Pack to Zip
+        filename = os.path.splitext(os.path.basename(db_path))[0]
+        all_files = [os.path.join(root, file)
+                     for root, dirs, files in os.walk(output_dir)
+                     for file in files]
+        with ZipFile(f"iFly-{filename[3:]}-PROC-FULL.zip",'w',compression=ZIP_DEFLATED,compresslevel=9) as zipf:
+            for file_path in tqdm(all_files, desc="[INFO] Zipping files", total=len(all_files), unit="file"):
+                arcname = os.path.relpath(file_path, output_dir)
+                zipf.write(file_path, arcname=arcname)
+
         print_debug_message("[INFO] Completed!")
+
     except Exception as e:
         print_debug_message(f"[ERRO] {repr(e)}")
     finally:
-        open(f"{output_dir}/Log.txt", 'w',
-             newline='\r\n').write('\n'.join(LOG))
-
+        open(os.path.join(output_dir,"Log.txt"),'w',newline='\r\n').write('\n'.join(LOG))
 
 def export_airport_supp() -> None:
     DF_APT['TRANSITIONS_ALT'] = DF_APT['TRANSITIONS_ALT'].fillna(9800)
