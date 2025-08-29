@@ -44,7 +44,7 @@ def main() -> None:
 
         # pack
         print_debug_message("[INFO] Making package...")
-        shutil.copy("Installation.txt", os.path.join(output_dir, "Installation.txt"))
+        shutil.copy("README.md", os.path.join(output_dir, "README.md"))
 
         exclude_prefixes = ("ZB","ZG","ZH","ZJ","ZL","ZP","ZS","ZU","ZW","ZY")
 
