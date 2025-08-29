@@ -90,7 +90,9 @@ def main() -> None:
     except Exception as e:
         print_debug_message(f"[ERRO] {repr(e)}")
     finally:
-        open(os.path.join(output_dir,"Log.txt"),'w',newline='\r\n').write('\n'.join(LOG))
+        log_dir = r".\Log"
+        os.makedirs(log_dir, exist_ok=True)
+        open(os.path.join(log_dir, "Log.txt"), 'w', newline='\r\n').write('\n'.join(LOG))
 
 def export_airport_supp() -> None:
     DF_APT['TRANSITIONS_ALT'] = DF_APT['TRANSITIONS_ALT'].fillna(9800)
@@ -549,9 +551,6 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 def print_debug_message(msg: str) -> None:
     LOG.append(msg)
     print(msg)
-    if "[WARN]" in msg:
-        with open(r"E:\Flight Simulation\Development\导航数据\BigBen Flight Simulation Data\iFly-Supp-Converter\log.txt", "a", encoding="utf-8") as f:
-            f.write(msg + "\n")
 
 
 if __name__ == "__main__":

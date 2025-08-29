@@ -191,3 +191,5 @@ cython_debug/
 
 /resource
 /release
+
+log.txt

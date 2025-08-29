@@ -1,1 +1,0 @@
-[WARN] Lat/Lon for ZJSY:R08-Y:SY462:SY488:terminal waypoint not found
