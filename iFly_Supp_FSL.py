@@ -7,12 +7,13 @@ import pandas as pd
 
 from directories import *
 
-DF_APT = pd.read_csv(f"{base_dir}/AIRPORT.csv")
-DF_RWY = pd.read_csv(f"{base_dir}/RUNWAY.csv")
-DF_PRO = pd.read_csv(f"{base_dir}/AIRPORT_PROCEDURE.csv")
-DF_WPT = pd.read_csv(f"{base_dir}/WAYPOINT.csv")
-DF_VHF = pd.read_csv(f"{base_dir}/VHF_NAVAID.csv")
-DF_NDB = pd.read_csv(f"{base_dir}/NDB_NAVAID.csv")
+filename = os.path.splitext(os.path.basename(db_path))[0]
+DF_APT = pd.read_csv(f"{base_dir}/AIRPORT-{filename[3:]}.csv")
+DF_RWY = pd.read_csv(f"{base_dir}/RUNWAY-{filename[3:]}.csv")
+DF_PRO = pd.read_csv(f"{base_dir}/AIRPORT_PROCEDURE-{filename[3:]}.csv", low_memory=False)
+DF_WPT = pd.read_csv(f"{base_dir}/WAYPOINT-{filename[3:]}.csv")
+DF_VHF = pd.read_csv(f"{base_dir}/VHF_NAVAID-{filename[3:]}.csv")
+DF_NDB = pd.read_csv(f"{base_dir}/NDB_NAVAID-{filename[3:]}.csv")
 
 LOG = []
 
