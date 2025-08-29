@@ -1,54 +1,98 @@
 import math
 import os
 import shutil
+from tqdm import tqdm
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pandas as pd
 
-from directories import base_dir, output_dir
+from directories import *
 
-DF_APT = pd.read_csv(f"{base_dir}/AIRPORT.csv")
-DF_RWY = pd.read_csv(f"{base_dir}/RUNWAY.csv")
-DF_PRO = pd.read_csv(f"{base_dir}/AIRPORT_PROCEDURE.csv")
-DF_WPT = pd.read_csv(f"{base_dir}/WAYPOINT.csv")
-DF_VHF = pd.read_csv(f"{base_dir}/VHF_NAVAID.csv")
-DF_NDB = pd.read_csv(f"{base_dir}/NDB_NAVAID.csv")
+filename = os.path.splitext(os.path.basename(db_path))[0]
+DF_APT = pd.read_csv(f"{base_dir}/AIRPORT-{filename[3:]}.csv")
+DF_RWY = pd.read_csv(f"{base_dir}/RUNWAY-{filename[3:]}.csv")
+DF_PRO = pd.read_csv(f"{base_dir}/AIRPORT_PROCEDURE-{filename[3:]}.csv", low_memory=False)
+DF_WPT = pd.read_csv(f"{base_dir}/WAYPOINT-{filename[3:]}.csv")
+DF_VHF = pd.read_csv(f"{base_dir}/VHF_NAVAID-{filename[3:]}.csv")
+DF_NDB = pd.read_csv(f"{base_dir}/NDB_NAVAID-{filename[3:]}.csv")
 
 LOG = []
 
+def copy_files(file_list, src_dir, dst_dir, desc, exclude_prefixes=None):
+    os.makedirs(dst_dir, exist_ok=True)
+    for src, dst in tqdm(file_list, desc=desc, total=len(file_list), unit="file"):
+        if exclude_prefixes and src.startswith(exclude_prefixes):
+            continue
+        shutil.copy2(os.path.join(src_dir, src), os.path.join(dst_dir, dst))
 
 def main() -> None:
     try:
         # restore directories
         print_debug_message("[INFO] Preparing output directories...")
         shutil.rmtree(output_dir, ignore_errors=True)
-        os.makedirs(output_dir)
-        os.makedirs(os.path.join(output_dir, "Supp"), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "Star"), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, "Sid"), exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+
+        for sub in ("Supp", "Star", "Sid"):
+            os.makedirs(os.path.join(output_dir, sub), exist_ok=True)
+
         # convert
         print_debug_message("[INFO] Converting from FSL to iFly...")
         export_airport_supp()
         export_airport_sid()
         export_airport_star()
         export_airport_app()
+
         # pack
         print_debug_message("[INFO] Making package...")
-        shutil.copy("Installation.txt", f"{output_dir}/Installation.txt")
-        with ZipFile(f"{output_dir}-CHN-PROC-FULL.zip", 'w',
-                     compression=ZIP_DEFLATED, compresslevel=9) as zipf:
-            for root, dirs, files in os.walk(output_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, output_dir)
-                    zipf.write(file_path, arcname=arcname)
+        shutil.copy("README.md", os.path.join(output_dir, "README.md"))
+
+        exclude_prefixes = ("ZB","ZG","ZH","ZJ","ZL","ZP","ZS","ZU","ZW","ZY")
+
+        # Define source and destination directories for SID/STAR/SUPP
+        src_sid_dir = os.path.join(base_dir, "navdata", "Permanent", "Sid")
+        dst_sid_dir = os.path.join(output_dir, "Sid")
+        src_star_dir = os.path.join(base_dir, "navdata", "Permanent", "Star")
+        dst_star_dir = os.path.join(output_dir, "Star")
+        src_supp_dir = os.path.join(base_dir, "navdata", "Permanent", "Supp")
+        dst_supp_dir = os.path.join(output_dir, "Supp")
+
+        # SID/STAR/SUPP
+        copy_files([(f, f) for f in os.listdir(src_sid_dir)], src_sid_dir, dst_sid_dir, "[INFO] Copying SID files", exclude_prefixes=exclude_prefixes)
+        copy_files([(f, f) for f in os.listdir(src_star_dir)], src_star_dir, dst_star_dir, "[INFO] Copying STAR files", exclude_prefixes=exclude_prefixes)
+        copy_files([(f, f) for f in os.listdir(src_supp_dir)], src_supp_dir, dst_supp_dir, "[INFO] Copying SUPP files", exclude_prefixes=exclude_prefixes)
+
+        # Navigraph
+        navigraph_files = [("FMC_Ident.txt","FMC_Ident.txt"),("WPNAVGLS.txt","WPNAVGLS.txt")]
+        copy_files(navigraph_files, os.path.join(base_dir,"navdata","Permanent"), output_dir, "[INFO] Copying Navigraph files")
+
+        # NAIP
+        naip_files = [
+            ("airports.dat","AIRPORTS.DAT"),
+            ("wpNavAID.txt","WPNAVAID.TXT"),
+            ("wpNavAPT.txt","WPNAVAPT.TXT"),
+            ("wpNavFIX.txt","WPNAVFIX.TXT"),
+            ("wpNavRTE.txt","WPNAVRTE.TXT"),
+        ]
+        copy_files(naip_files, os.path.join(base_dir,"navdata","WorldWide_Navdata"), output_dir, "[INFO] Copying NAIP files")
+
+        # Pack to Zip
+        filename = os.path.splitext(os.path.basename(db_path))[0]
+        all_files = [os.path.join(root, file)
+                     for root, dirs, files in os.walk(output_dir)
+                     for file in files]
+        with ZipFile(f"iFly-{filename[3:]}-PROC-FULL.zip",'w',compression=ZIP_DEFLATED,compresslevel=9) as zipf:
+            for file_path in tqdm(all_files, desc="[INFO] Zipping files", total=len(all_files), unit="file"):
+                arcname = os.path.relpath(file_path, output_dir)
+                zipf.write(file_path, arcname=arcname)
+
         print_debug_message("[INFO] Completed!")
+
     except Exception as e:
         print_debug_message(f"[ERRO] {repr(e)}")
     finally:
-        open(f"{output_dir}/Log.txt", 'w',
-             newline='\r\n').write('\n'.join(LOG))
-
+        log_dir = r".\Log"
+        os.makedirs(log_dir, exist_ok=True)
+        open(os.path.join(log_dir, "Log.txt"), 'w', newline='\r\n').write('\n'.join(LOG))
 
 def export_airport_supp() -> None:
     DF_APT['TRANSITIONS_ALT'] = DF_APT['TRANSITIONS_ALT'].fillna(9800)
@@ -291,6 +335,7 @@ def extract_leg(row: pd.Series) -> list:
     arpt = row['ARPT_IDENT']
     leg_type = row['PATH_AND_TERMINATION']
     proc_name = row['PROC_IDENT']
+    transition_name = row['TRANSITION_IDENT'] if pd.notna(row['TRANSITION_IDENT']) else "PUBLIC"
     extracted_lines = [f"Leg={leg_type}"]
     pt_name = row['FIX_IDENT']
     # find Lat/Lon
@@ -312,10 +357,10 @@ def extract_leg(row: pd.Series) -> list:
                 extracted_lines.append("Longitude=%.06f" % longitude)
             if len(msg):
                 print_debug_message(
-                    f"[WARN] Lat/Lon for {arpt}:{proc_name}:{pt_name}:{msg}")
+                    f"[WARN] Lat/Lon for {arpt}:{proc_name}:{transition_name}:{pt_name}:{msg}")
         else:
             print_debug_message(
-                f"[WARN] IDENT missing for {arpt}:{proc_name}")
+                f"[WARN] IDENT missing for {arpt}:{proc_name}:{transition_name}")
     # cross this point: by finding 'B/Y' in 2nd char of WAYPOINT_DESCR_CODE
     pt_descr = row['WAYPOINT_DESCR_CODE']
     if not pd.isna(pt_descr) and len(pt_descr) == 4 and pt_descr[1] in ['B', 'Y']:
@@ -327,14 +372,14 @@ def extract_leg(row: pd.Series) -> list:
             extracted_lines.append("Heading=%.01f" % float(pt_hdg))
         else:
             print_debug_message(
-                f"[WARN] Heading missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] Heading missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # turn direction
     pt_tdir = row['TURN_DIR']
     if pt_tdir in ['L', 'R']:
         extracted_lines.append(f"TurnDirection={pt_tdir}")
     elif leg_type in ['PI', 'HA', 'HF', 'HM']:
         print_debug_message(
-            f"[WARN] TurnDirection missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] TurnDirection missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # speed
     pt_spd = row['SPEED_LIMIT']
     if not pd.isna(pt_spd) and len(pt_spd := pt_spd.strip()):
@@ -361,7 +406,7 @@ def extract_leg(row: pd.Series) -> list:
             extracted_lines.append("Altitude=%d" % pt_alt1)
     elif leg_type in ['CA', 'VA', 'FA']:
         print_debug_message(
-            f"[WARN] Altitude missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] Altitude missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # missed approach point: by finding 'M' in 4th char of WAYPOINT_DESCR_CODE
     if not pd.isna(pt_descr) and len(pt_descr) == 4 and pt_descr[3] == 'M':
         extracted_lines.append("MAP=1")
@@ -371,7 +416,7 @@ def extract_leg(row: pd.Series) -> list:
         extracted_lines.append(f"Frequency={pt_navaid}")
     elif leg_type in ['PI', 'AF', 'CD', 'VD', 'CR', 'VR', 'FD']:
         print_debug_message(
-            f"[WARN] Frequency missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] Frequency missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # slope
     pt_angl = row['VERTICAL_ANGLE']
     if not pd.isna(pt_angl):
@@ -382,7 +427,7 @@ def extract_leg(row: pd.Series) -> list:
         extracted_lines.append("NavBear=%.01f" % (int(pt_navbear)/10))
     elif leg_type in ['PI', 'CR', 'VR']:
         print_debug_message(
-            f"[WARN] NavBear missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] NavBear missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # NavDist
     if leg_type in ['CD', 'VD', 'FD']:
         pt_dort = row['ROUTE_DISTANCE_HOLDING_DISTANCE_OR_TIME']
@@ -390,14 +435,14 @@ def extract_leg(row: pd.Series) -> list:
             extracted_lines.append("NavDist=%.01f" % (int(pt_dort)/10))
         else:
             print_debug_message(
-                f"[WARN] NavDist missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] NavDist missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     else:
         pt_navrho = row['RHO']
         if not pd.isna(pt_navrho):
             extracted_lines.append("NavDist=%.01f" % (int(pt_navrho)/10))
         elif leg_type in ['PI', 'AF']:
             print_debug_message(
-                f"[WARN] NavDist missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] NavDist missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # dist
     pt_dort = row['ROUTE_DISTANCE_HOLDING_DISTANCE_OR_TIME']
     if not pd.isna(pt_dort) and len(pt_dort := pt_dort.strip()) and pt_dort[0] == 'T':
@@ -406,7 +451,7 @@ def extract_leg(row: pd.Series) -> list:
         extracted_lines.append("Dist=%.01f" % (int(pt_dort)/10))
     elif leg_type in ['PI', 'HA', 'HF', 'HM', 'FC']:
         print_debug_message(
-            f"[WARN] Dist missing for {arpt}:{proc_name}:{pt_name}")
+            f"[WARN] Dist missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     # Center lat/lon
     if leg_type == 'RF':
         pt_cfix = row['CENTER_FIX_OR_TAA_PROCEDURE_TURN_IND'].strip()
@@ -421,7 +466,7 @@ def extract_leg(row: pd.Series) -> list:
                     f"[WARN] RF center for {arpt}:{proc_name}:{pt_cfix}:{msg}")
         else:
             print_debug_message(
-                f"[WARN] RF center missing for {arpt}:{proc_name}:{pt_name}")
+                f"[WARN] RF center missing for {arpt}:{proc_name}:{transition_name}:{pt_name}")
     return extracted_lines
 
 
