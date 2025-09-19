@@ -179,7 +179,7 @@ def export_airport_sid() -> None:
                     k += 1
             filename = f"{arpt}.sid{'trs' if pt == 'trans' else ''}"
             open(f"{output_dir}/Sid/{filename}", 'w',
-                 newline='\r\n').write('\n'.join(full_lines))
+                 newline='\r\n').write('\n'.join(full_lines) + '\n')
             print_debug_message(f"[INFO] Exported: {filename}")
 
 
@@ -248,7 +248,7 @@ def export_airport_star() -> None:
                     k += 1
             filename = f"{arpt}.star{'trs' if pt == 'trans' else ''}"
             open(f"{output_dir}/Star/{filename}", 'w',
-                 newline='\r\n').write('\n'.join(full_lines))
+                 newline='\r\n').write('\n'.join(full_lines) + '\n')
             print_debug_message(f"[INFO] Exported: {filename}")
 
 
@@ -300,7 +300,7 @@ def export_airport_app() -> None:
                     k += 1
             filename = f"{arpt}.app{'trs' if pt == 'trans' else ''}"
             open(f"{output_dir}/Star/{filename}", 'w',
-                 newline='\r\n').write('\n'.join(full_lines))
+                 newline='\r\n').write('\n'.join(full_lines) + '\n')
             print_debug_message(f"[INFO] Exported: {filename}")
 
 
