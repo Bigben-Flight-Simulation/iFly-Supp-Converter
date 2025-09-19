@@ -67,11 +67,11 @@ def main() -> None:
 
         # NAIP
         naip_files = [
-            ("airports.dat","AIRPORTS.DAT"),
-            ("wpNavAID.txt","WPNAVAID.TXT"),
-            ("wpNavAPT.txt","WPNAVAPT.TXT"),
-            ("wpNavFIX.txt","WPNAVFIX.TXT"),
-            ("wpNavRTE.txt","WPNAVRTE.TXT"),
+            ("airports.dat","AIRPORTS.dat"),
+            ("wpNavAID.txt","WPNAVAID.txt"),
+            ("wpNavAPT.txt","WPNAVAPT.txt"),
+            ("wpNavFIX.txt","WPNAVFIX.txt"),
+            ("wpNavRTE.txt","WPNAVRTE.txt"),
         ]
         copy_files(naip_files, os.path.join(base_dir,"navdata","WorldWide_Navdata"), output_dir, "[INFO] Copying NAIP files")
 
@@ -80,7 +80,7 @@ def main() -> None:
         all_files = [os.path.join(root, file)
                      for root, dirs, files in os.walk(output_dir)
                      for file in files]
-        with ZipFile(f"iFly-{filename[3:]}-PROC-FULL.zip",'w',compression=ZIP_DEFLATED,compresslevel=9) as zipf:
+        with ZipFile(f"iFly-AVJ-{filename[3:]}.zip",'w',compression=ZIP_DEFLATED,compresslevel=9) as zipf:
             for file_path in tqdm(all_files, desc="[INFO] Zipping files", total=len(all_files), unit="file"):
                 arcname = os.path.relpath(file_path, output_dir)
                 zipf.write(file_path, arcname=arcname)
