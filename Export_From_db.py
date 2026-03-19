@@ -31,7 +31,7 @@ queries = {
     """,
     "WAYPOINT": """
         SELECT * FROM WAYPOINT 
-        WHERE WAYPOINT_ICAO_CODE IN ('ZB','ZG','ZH','ZJ','ZL','ZP','ZS','ZU','ZW','ZY');
+        WHERE WAYPOINT_ICAO_CODE IN ('ZB','ZG','ZH','ZJ','ZL','ZP','ZS','ZU','ZW','ZY','VH');
     """
 }
 
@@ -41,7 +41,9 @@ def export_to_csv():
         print(f"正在导出 {table} ...")
         df = pd.read_sql_query(sql, conn)
         db_filename = filename[3:]
-        output_file = f"./resource/{table}-{db_filename}.csv"
+        output_dir = f"./resource/{db_filename}"
+        os.makedirs(output_dir, exist_ok=True)
+        output_file = f"{output_dir}/{table}-{db_filename}.csv"
         df.to_csv(output_file, index=False, encoding="utf-8")
         print(f"{table} 导出完成 -> {output_file}")
     conn.close()

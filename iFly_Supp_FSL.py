@@ -9,12 +9,12 @@ import pandas as pd
 from directories import *
 
 filename = os.path.splitext(os.path.basename(db_path))[0]
-DF_APT = pd.read_csv(f"{base_dir}/AIRPORT-{filename[3:]}.csv")
-DF_RWY = pd.read_csv(f"{base_dir}/RUNWAY-{filename[3:]}.csv")
-DF_PRO = pd.read_csv(f"{base_dir}/AIRPORT_PROCEDURE-{filename[3:]}.csv", low_memory=False)
-DF_WPT = pd.read_csv(f"{base_dir}/WAYPOINT-{filename[3:]}.csv")
-DF_VHF = pd.read_csv(f"{base_dir}/VHF_NAVAID-{filename[3:]}.csv")
-DF_NDB = pd.read_csv(f"{base_dir}/NDB_NAVAID-{filename[3:]}.csv")
+DF_APT = pd.read_csv(f"{base_dir}/{filename[3:]}/AIRPORT-{filename[3:]}.csv")
+DF_RWY = pd.read_csv(f"{base_dir}/{filename[3:]}/RUNWAY-{filename[3:]}.csv")
+DF_PRO = pd.read_csv(f"{base_dir}/{filename[3:]}/AIRPORT_PROCEDURE-{filename[3:]}.csv", low_memory=False)
+DF_WPT = pd.read_csv(f"{base_dir}/{filename[3:]}/WAYPOINT-{filename[3:]}.csv")
+DF_VHF = pd.read_csv(f"{base_dir}/{filename[3:]}/VHF_NAVAID-{filename[3:]}.csv")
+DF_NDB = pd.read_csv(f"{base_dir}/{filename[3:]}/NDB_NAVAID-{filename[3:]}.csv")
 
 LOG = []
 
@@ -68,12 +68,12 @@ def main() -> None:
         # NAIP
         naip_files = [
             ("airports.dat","AIRPORTS.dat"),
-            ("wpNavAID.txt","WPNAVAID.txt"),
-            ("wpNavAPT.txt","WPNAVAPT.txt"),
-            ("wpNavFIX.txt","WPNAVFIX.txt"),
-            ("wpNavRTE.txt","WPNAVRTE.txt"),
+            ("wpNAVAID.txt","WPNAVAID.txt"),
+            ("wpNAVAPT.txt","WPNAVAPT.txt"),
+            ("wpNAVFIX.txt","WPNAVFIX.txt"),
+            ("wpNAVRTE.txt","WPNAVRTE.txt"),
         ]
-        copy_files(naip_files, os.path.join(base_dir,"navdata","WorldWide_Navdata"), output_dir, "[INFO] Copying NAIP files")
+        copy_files(naip_files, os.path.join(base_dir,"navdata","NAIP","NAVDATA"), output_dir, "[INFO] Copying NAIP files")
 
         # Pack to Zip
         filename = os.path.splitext(os.path.basename(db_path))[0]
